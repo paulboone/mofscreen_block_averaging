@@ -20,11 +20,13 @@ filename = "gas.lammpstrj"
 
 num_rows = 1985
 num_atoms = 30
-num_cols = 7 # id, type, mol, mass, x, y, z
-data = np.zeros((num_rows, num_atoms, num_cols))
+num_molecules = 10
+num_cols = 3 # x, y, z (for COM)
+data = np.zeros((num_rows, num_molecules, num_cols))
+start_molecule = 1
 
 with open(filename, 'r') as f:
-    for i in range(num_rows):
+    for row in range(num_rows):
         _ = next(f) # timestep
         timestep = int(next(f))
 
@@ -38,11 +40,25 @@ with open(filename, 'r') as f:
 
         _ = next(f) # atoms
 
+
+        masses = np.zeros(num_molecules)
+
         for a in range(num_atoms):
             cols = next(f).strip().split()
-            cols = cols[0:3] + cols[6:7] + cols[8:11]
-            data[i,a] = [float(s) for s in cols]
+            mol_index = int(cols[2]) - start_molecule
+            mass = float(cols[6])
+            x = float(cols[8])
+            y = float(cols[9])
+            z = float(cols[10])
 
+            masses[mol_index] += mass
+            data[row, mol_index, 0] += x * mass
+            data[row, mol_index, 1] += y * mass
+            data[row, mol_index, 2] += z * mass
+
+        # divide x,y,z by total mass
+        for mol_index in range(num_molecules):
+            data[row, mol_index] /= masses[mol_index]
 
 np.save('lammpstrj.npy', data)
 
