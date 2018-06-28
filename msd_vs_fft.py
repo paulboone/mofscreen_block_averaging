@@ -6,6 +6,7 @@ def msd_straight_forward(r):
     msds = np.zeros(shifts.size)
 
     for i, shift in enumerate(shifts):
+        # gets us all differences of tau = shift
         diffs = r[:-shift if shift else None] - r[shift:]
         sqdist = np.square(diffs).sum(axis=1)
         msds[i] = sqdist.mean()
