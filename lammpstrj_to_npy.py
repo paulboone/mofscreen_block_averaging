@@ -3,6 +3,7 @@
 import argparse
 # import csv
 import sys
+import time
 
 import numpy as np
 # from lammps_tools.utils import thermo_from_lammps_log
@@ -18,15 +19,22 @@ import numpy as np
 
 filename = "gas.lammpstrj"
 
-num_rows = 1985
+num_rows = 4110001
 num_atoms = 30
 num_molecules = 10
 num_cols = 3 # x, y, z (for COM)
 data = np.zeros((num_rows, num_molecules, num_cols))
 start_molecule = 1
 
+start_time = time.time()
+prev_time = start_time
 with open(filename, 'r') as f:
     for row in range(num_rows):
+        if row % 10000 == 0:
+            t = time.time()
+            print("%.1fs (delta %5.1fs): %i" % (t - start_time, t - prev_time, row))
+            prev_time = t
+
         _ = next(f) # timestep
         timestep = int(next(f))
 
