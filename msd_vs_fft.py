@@ -60,6 +60,7 @@ t = np.arange(0,N)
 simple_t = np.mean(t.reshape(-1,reduce_points), axis=1) * fs_per_row / 1e6
 data = np.load(filename) # row:molecule:x,y,z
 num_rows, num_molecules, num_cols = data.shape
+# num_molecules = 10
 
 # per molecule plots
 fig = plt.figure(figsize=(7,7*num_molecules))
@@ -67,6 +68,7 @@ all_results = np.zeros(int(N / reduce_points))
 for m in range(num_molecules):
     d0 = data[:,m,:][:N,:] # m for mth molecule
     results = msd_fft(d0)
+
     simple_results = np.mean(results.reshape(-1, reduce_points), axis=1)
     all_results += simple_results
     ax = fig.add_subplot(num_molecules, 1, m + 1)
@@ -76,12 +78,16 @@ for m in range(num_molecules):
     ax.plot(simple_t, simple_results, zorder=2)
 
 fig.savefig("msd_fft_molecule_plots.png", dpi=288)
-all_results /= num_molecules
+all_results /= (6*num_molecules)
 
 
-# attempted fits across different ranges
+
+# attempt fits across different ranges
+# generally for all fits, first 10% and last 50% are thrown away
+# different ranges from 0.1-0.5 are tried, and fit with lowest error is selected as the
+# "correct" fit and reported as the diffusivity
 lin_fit_pairs = [(0.0,1.0), (0.10,0.50), (0.10,0.45), (0.10,0.40), (0.10,0.35), (0.10,0.30)]
-results = []
+fit_results = []
 lowest_error = None
 lowest_error_pair = None
 for pair in lin_fit_pairs:
@@ -96,20 +102,23 @@ for pair in lin_fit_pairs:
     if not lowest_error or error < lowest_error:
         lowest_error = error
         lowest_error_pair = (p1,p2)
-    results.append([(p1,p2), error, poly])
+    fit_results.append([(p1,p2), error, poly])
 
 # plot combined data and fits
 fig = plt.figure(figsize=(7,7))
 ax = fig.add_subplot(1, 1, 1)
-ax.set_xlabel('tau [ps]')
+ax.set_xlabel('tau [ns]')
 ax.set_ylabel('MSD [Ang^2]')
 ax.grid(linestyle='-', color='0.7', zorder=0)
 ax.plot(simple_t, all_results, zorder=10)
 
-for r in results:
+for r in fit_results:
     p, error, poly = r
     zorder = 2
     if p == lowest_error_pair:
+        print("Best fit: (%.2f-%.2f; %.2E):" % (*p, error))
+        print("D = %2.2f angstrom^2 / ns" % poly[0])
+        print("D = %2.3E cm^2 / s" % (poly[0] * 1e-16/1e-9))
         zorder = 20
 
     ax.plot(simple_t[p[0]:p[1]], np.polyval(poly, simple_t[p[0]:p[1]]), zorder=zorder,
