@@ -10,6 +10,7 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy import stats
 
 def msd_straight_forward(r):
     shifts = np.arange(len(r))
@@ -81,27 +82,28 @@ fig.savefig("msd_fft_molecule_plots.png", dpi=288)
 all_results /= (6*num_molecules)
 
 
-
 # attempt fits across different ranges
 # generally for all fits, first 10% and last 50% are thrown away
 # different ranges from 0.1-0.5 are tried, and fit with lowest error is selected as the
 # "correct" fit and reported as the diffusivity
-lin_fit_pairs = [(0.0,1.0), (0.10,0.50), (0.10,0.45), (0.10,0.40), (0.10,0.35), (0.10,0.30)]
+lin_fit_pairs = [(0.0,1.0), (0.10,0.50), (0.10,0.45), (0.10,0.40), (0.10,0.35), (0.30,0.50), (0.25,0.50), (0.20,0.50), (0.15,0.50), (0.20,0.40), (0.15,0.40), (0.20, 0.45)]
 fit_results = []
-lowest_error = None
-lowest_error_pair = None
+highest_error = None
+highest_error_pair = None
 for pair in lin_fit_pairs:
     # y = at + b
     len(simple_t)
     p1 = int(pair[0]* N / reduce_points)
     p2 = int(pair[1]* N / reduce_points)
     poly, residuals, rank, _, _ = np.polyfit(simple_t[p1:p2], all_results[p1:p2],1, full=True,)
-    error = residuals / (p2 - p1)
+    slope, intercept, r_value, _, _ = stats.linregress(simple_t[p1:p2], all_results[p1:p2])
+    poly = (slope, intercept)
+    error = r_value ** 2
 
     # pick best fit
-    if not lowest_error or error < lowest_error:
-        lowest_error = error
-        lowest_error_pair = (p1,p2)
+    if not highest_error or error > highest_error:
+        highest_error = error
+        highest_error_pair = (p1,p2)
     fit_results.append([(p1,p2), error, poly])
 
 # plot combined data and fits
@@ -115,14 +117,15 @@ ax.plot(simple_t, all_results, zorder=10)
 for r in fit_results:
     p, error, poly = r
     zorder = 2
-    if p == lowest_error_pair:
+    if p == highest_error_pair:
         print("Best fit: (%.2f-%.2f; %.2E):" % (*p, error))
         print("D = %2.2f angstrom^2 / ns" % poly[0])
         print("D = %2.3E cm^2 / s" % (poly[0] * 1e-16/1e-9))
+        print("D = %2.3E m^2 / s" % (poly[0] * 1e-20/1e-9))
         zorder = 20
 
     ax.plot(simple_t[p[0]:p[1]], np.polyval(poly, simple_t[p[0]:p[1]]), zorder=zorder,
-            label="(%.2f-%.2f; %.2E) %2.0ft + %2.0f" % (*p, error, *poly))
+            label="(%.2f-%.2f; %0.3f) %2.0ft + %2.0f" % (*p, error, *poly))
 
 ax.legend()
 fig.savefig("msd_fft_all_plot.png", dpi=288)
